@@ -1,5 +1,8 @@
 ;;;; Conway's Game of Life.
 
+;; Make sure that SBCL does tail-call optimisation.
+(declaim (optimize #+sbcl (sb-c::merge-tail-calls 3) #+sbcl (sb-c::insert-debug-catch 0))) 
+
 (defun make-board ()
   "Creates the board that the game takes place on using list comprehensions."
   (loop
