@@ -3,8 +3,6 @@
 ;; Make sure that SBCL does tail-call optimisation.
 (declaim (optimize (debug 0) (space 3) (speed 0)))
 
-(format T "Please input a board size.~%")
-
 ;; The string representing a living square.
 (defvar *live* "~c[34m■ ")
 
@@ -39,7 +37,7 @@
       (concatenate 'string (apply 'concatenate 'string lst) "~%")
       ;; Every `~c` in every string needs a corresponding #\ESC.
       (make-list limit :initial-element #\ESC))))
-  (format T "Mash buttons to continue. Type Q to quit. ~%"))
+  (format T "~c[37mMash buttons to continue. Type Q to quit. ~%" #\ESC))
 
 (defun nth-with-default (x lst default)
   "Makes sure that `x` is within the bounds of the list.
@@ -106,6 +104,7 @@
 ;;;; It might be a mess, but at least there's no mutable state! :)
 
 (defun begin ()
+  (format T "Please input a board size.~%")
   (let ((limit (parse-integer (read-line))))
     (if (> limit 35)
 	(progn
