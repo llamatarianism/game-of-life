@@ -3,17 +3,28 @@
 ;; Make sure that SBCL does tail-call optimisation.
 (declaim (optimize (debug 0) (space 3) (speed 0)))
 
+(format T "Please input a board size.~%")
+
+;; The string representing a living square.
+(defvar *live* "~c[34m■ ")
+
+;; The string representing a dead square.
+(defvar *dead* "~c[37;1m□ ")
+
+;; The string representing a newly born square.
+(defvar *new* "~c[36m▧ ")
+
 (defun make-board (limit)
   "Creates the board that the game takes place on using list comprehensions."
   (loop
      for i from 1 to limit collect
        (loop
 	  for i from 1 to limit collect
-	    ;; ■ is a populated square, □ is a dead one.
-	    (if (= 2 (random 3 (make-random-state T))) "~c[36m■ " "~c[37;1m□ "))))
+	    ;; Randomly populate the board with living squares.
+	    (if (= 2 (random 3 (make-random-state T))) *live* *dead*))))
 
 (defun deadp (square)
-  (equal "~c[37;1m□ " square))
+  (equal *dead* square))
 
 ;; Give up all hope, all ye who enter here D:
 (defun display-board (board limit)
@@ -24,7 +35,9 @@
      (apply
       'format
       'NIL
+      ;; Concatenate all the strings in the list together, then add a new line.
       (concatenate 'string (apply 'concatenate 'string lst) "~%")
+      ;; Every `~c` in every string needs a corresponding #\ESC.
       (make-list limit :initial-element #\ESC))))
   (format T "Mash buttons to continue. Type Q to quit. ~%"))
 
@@ -64,14 +77,14 @@
   (let ((neighbour-sum (sum-neighbours x y board))
 	(this-square (nth y (nth x board))))
     (cond
-      ;; If the square is dead and has 3 neighbours, it's a new cell.
+      ;; If the square is dead and has 3 neighbours, it's a new square.
       ((and (deadp this-square) (= neighbour-sum 3))
-       "~c[34m▧ ")
+       *new*)
       ;; If the square is alive and has 2 or 3 neighbours, it's still alive.
       ((and (not (deadp this-square)) (>= 3 neighbour-sum 2))
-       "~c[36m■ ")
+       *live*)
       ;; Otherwise, it's dead.
-      (T "~c[37;1m□ "))))
+      (T *dead*))))
 
 (defun update-board (board limit)
   "Creates a new board with each tile updated based on the previous state of the board."
@@ -79,6 +92,7 @@
      for i upto limit collect
        (loop
 	  for j upto limit collect
+	    ;; Update each tile.
 	    (update-square i j board))))
 
 (defun state-loop (state limit)
@@ -86,7 +100,7 @@
    Displays the state, then recurses with the updated state."
   (display-board state limit)
   (if (equal "q" (string-downcase (read-line)))
-      (print "Bye!")
+      (format T "Bye!~%")
       (state-loop (update-board state (- limit 1)) limit)))
 
 ;;;; It might be a mess, but at least there's no mutable state! :)
@@ -94,9 +108,10 @@
 (defun begin ()
   (let ((limit (parse-integer (read-line))))
     (if (> limit 35)
-	(format T "~c[31mThat's too big." #\ESC)
+	(progn
+	  (format T "~c[31mThat's too big." #\ESC)
+	  (begin))
 	(state-loop (make-board limit) limit))))
 
-(print "Please input a board size.")
 (begin)
 
