@@ -1,14 +1,13 @@
 ;;;; Conway's Game of Life.
 
-;;; The board that the game takes place on.
-(defvar *board*
-  ;; List comprehension.
+(defun make-board ()
+  "Creates the board that the game takes place on using list comprehensions."
   (loop
      for i upto 9 collect
        (loop
 	  for j upto 9 collect
 	    ;; ■ is a populated square, □ is a dead one.
-	    (if (= 2 (random 3)) "■" "□"))))
+	    (if (= 2 (random 3 (make-random-state T))) "■" "□"))))
 
 (defun display-board (board)
   "Displays the board in a nice, pretty way."
@@ -56,7 +55,7 @@
       "□"))                                        ; Otherwise, it's dead.
 
 (defun update-board (board)
-  
+  "Creates a new board with each tile updated based on the previous state of the board."
   (loop
      for i upto 9 collect
        (loop
@@ -73,7 +72,7 @@
 
 ;;;; It might be a mess, but at least there's no mutable state! :)
 
-(defun main (argv)
-  (declare (ignore argv))
-  (state-loop *board*))
+(defun begin ()
+  (state-loop (make-board)))
 
+(begin)
