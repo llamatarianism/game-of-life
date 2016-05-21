@@ -1,21 +1,31 @@
 ;;;; Conway's Game of Life.
 
 ;; Make sure that SBCL does tail-call optimisation.
-(declaim (optimize #+sbcl (sb-c::merge-tail-calls 3) #+sbcl (sb-c::insert-debug-catch 0))) 
+(declaim (optimize (debug 0) (space 3) (speed 0)))
 
-(defun make-board ()
+(defun make-board (limit)
   "Creates the board that the game takes place on using list comprehensions."
   (loop
-     for i upto 9 collect
+     for i from 1 to limit collect
        (loop
-	  for j upto 9 collect
+	  for i from 1 to limit collect
 	    ;; ■ is a populated square, □ is a dead one.
-	    (if (= 2 (random 3 (make-random-state T))) "■" "□"))))
+	    (if (= 2 (random 3 (make-random-state T))) "~c[36m■ " "~c[37;1m□ "))))
 
-(defun display-board (board)
+(defun deadp (square)
+  (equal "~c[37;1m□ " square))
+
+;; Give up all hope, all ye who enter here D:
+(defun display-board (board limit)
   "Displays the board in a nice, pretty way."
-  (dolist (lst board)             ; For each list in the board...
-    (format T "~{~a~^ ~}~%" lst)) ; print it to the console, joined by spaces ( ~^ ).
+  (dolist (lst board)
+    (format
+     T
+     (apply
+      'format
+      'NIL
+      (concatenate 'string (apply 'concatenate 'string lst) "~%")
+      (make-list limit :initial-element #\ESC))))
   (format T "Mash buttons to continue. Type Q to quit. ~%"))
 
 (defun nth-with-default (x lst default)
@@ -38,45 +48,55 @@
 	   ;; Make sure that mx and my aren't both equal to 0.
 	   ;; If they were, then the square itself would be counted as one of its neighbours.
 	   when (not (and (zerop mx) (zerop my))) collect
-	     (nth-with-default (+ y my) (nth-with-default (+ x mx) board NIL) "□")))))
+	     (nth-with-default (+ y my) (nth-with-default (+ x mx) board NIL) "~c[37;1m□ ")))))
 
 (defun sum-neighbours (x y board)
   "Returns the number of living neighbours that a square has."
   (reduce
    (lambda (num square)
-     (+ num (if (equal "■" square) 1 0))) ; Living squares = 1, dead squares = 0.
+     (+ num (if (deadp square) 0 1))) ; Living squares = 1, dead squares = 0.
    (neighbours x y board)
    :initial-value 0))
 
 (defun update-square (x y board)
   "Determines whether a square should live or die."
   ;; Bind it using a `let` to make sure it's not computed twice.
-  (let ((neighbour-sum (sum-neighbours x y board)))
-    (if (or (and (equal (nth y (nth x board)) "■") ; If the cell is alive...
-		 (= neighbour-sum 2))              ; and it has exactly 2 neighbours...
-	    (= neighbour-sum 3))                   ; or it has exactly 3 neighbours...
-	"■"                                        ; it's alive!
-	"□")))                                     ; Otherwise it's dead.
+  (let ((neighbour-sum (sum-neighbours x y board))
+	(this-square (nth y (nth x board))))
+    (cond
+      ;; If the square is dead and has 3 neighbours, it's a new cell.
+      ((and (deadp this-square) (= neighbour-sum 3))
+       "~c[34m▧ ")
+      ;; If the square is alive and has 2 or 3 neighbours, it's still alive.
+      ((and (not (deadp this-square)) (>= 3 neighbour-sum 2))
+       "~c[36m■ ")
+      ;; Otherwise, it's dead.
+      (T "~c[37;1m□ "))))
 
-(defun update-board (board)
+(defun update-board (board limit)
   "Creates a new board with each tile updated based on the previous state of the board."
   (loop
-     for i upto 9 collect
+     for i upto limit collect
        (loop
-	  for j upto 9 collect
+	  for j upto limit collect
 	    (update-square i j board))))
 
-(defun state-loop (state)
+(defun state-loop (state limit)
   "The main game loop.
    Displays the state, then recurses with the updated state."
-  (display-board state)
+  (display-board state limit)
   (if (equal "q" (string-downcase (read-line)))
       (print "Bye!")
-      (state-loop (update-board state))))
+      (state-loop (update-board state (- limit 1)) limit)))
 
 ;;;; It might be a mess, but at least there's no mutable state! :)
 
 (defun begin ()
-  (state-loop (make-board)))
+  (let ((limit (parse-integer (read-line))))
+    (if (> limit 35)
+	(format T "~c[31mThat's too big." #\ESC)
+	(state-loop (make-board limit) limit))))
 
+(print "Please input a board size.")
 (begin)
+
